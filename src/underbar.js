@@ -288,6 +288,51 @@
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+    /*var args = {};
+    return function() {
+      // this is completely a hack. it doesn't work if called with two different
+      // arguments that stringify to the same thing, such as 2 and '2'. also,
+      // it doesn't work if called on (1, 2) and then on ('1!2').
+      var a = Array.prototype.slice.call(arguments).join('!');
+      if (args[a] === undefined) {
+        args[a] = func.apply(this, arguments);
+      }
+      return args[a];
+    };*/
+
+    // this version works. hooray! would benefit from a helper method to test
+    // for equality of objects. i feel like there must be a more concise
+    // solution but it escapes me for the moment.
+    var pastArgs = [];
+    var pastResults = [];
+    return function() {
+      var a = Array.prototype.slice.call(arguments);
+      // find these arguments in pastArgs
+      for (var i = 0; i < pastArgs.length; ++i) {
+        for (var j = 0; j < a.length; ++j) {
+          if (typeof a[j] === 'object' && typeof pastArgs[i][j] === 'object') {
+            var aProps = Object.getOwnPropertyNames(a[j]);
+            var pastProps = Object.getOwnPropertyNames(pastArgs[i][j]);
+            if (aProps.length !== pastProps.length) {
+              break;
+            }
+            for (var k = 0; k < aProps.length; ++k) {
+              if (a[j][aProps[k]] !== pastArgs[i][j][aProps[k]]) {
+                break;
+              }
+            }
+          } else if (pastArgs[i][j] !== a[j]) {
+            break;
+          }
+          if (j === a.length - 1) {
+            return pastResults[i];
+          }
+        }
+      }
+      pastArgs.push(a);
+      pastResults.push(func.apply(this, arguments));
+      return pastResults[pastResults.length - 1];
+    };
   };
 
   // Delays a function for the given number of milliseconds, and then calls
